@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>아이폰 이미지 줄이기</title>
+  <title>아이폰 사진 줄이기</title>
   <style>
     :root{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -79,8 +79,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>📱 아이폰 이미지 줄이기</h1>
-    <p class="sub">사진 선택 → 줄이기 → 다운로드. (기기 안에서만 처리, 업로드 없음)</p>
+    <h1>📱 아이폰 사진 줄이기</h1>
+    <p class="sub">사진 선택 → 줄이기 → (아이폰) 결과 이미지 열기 → 길게 눌러 저장</p>
 
     <div class="card">
       <div class="section">
@@ -91,7 +91,7 @@
           <label for="file" class="pick">📷 이미지 선택하기</label>
           <input id="file" class="file-input" type="file" accept="image/*" />
 
-          <div class="mini">JPG/PNG/WEBP 가능</div>
+          <div class="mini">JPG/PNG/WEBP 가능 (업로드 없음)</div>
         </div>
 
         <div class="pillrow" id="stats"></div>
@@ -123,18 +123,20 @@
             </select>
           </div>
           <div>
-            <label class="meta">다운로드 파일명 (확장자 자동)</label>
+            <label class="meta">파일명 (확장자 자동)</label>
             <input id="outName" type="text" placeholder="예) photo_resized" />
           </div>
         </div>
 
         <div class="btnrow">
           <button id="run" class="btn primary" type="button" disabled>줄이기</button>
-          <button id="download" class="btn secondary" type="button" disabled>다운로드</button>
+          <button id="download" class="btn secondary" type="button" disabled>결과 이미지 열기 (길게 눌러 저장)</button>
           <button id="reset" class="btn secondary" type="button">초기화</button>
         </div>
 
-        <p class="note">팁) 1200~2000px + 품질 0.75~0.85 추천</p>
+        <p class="note">
+          아이폰은 “파일 다운로드”가 막혀서, 버튼 누르면 이미지가 새 탭으로 열립니다 → 이미지를 길게 눌러 “사진에 추가/저장”.
+        </p>
       </div>
 
       <div class="divider"></div>
@@ -179,7 +181,6 @@
   let outBlob = null;
 
   const extForMime = (mime) => mime === "image/webp" ? "webp" : (mime === "image/png" ? "png" : "jpg");
-
   const stripExt = (s) => (s || "").trim().replace(/\.(jpg|jpeg|png|webp)$/i, "");
 
   const downloadName = () => {
@@ -217,11 +218,10 @@
   quality.addEventListener("input", () => qVal.textContent = Number(quality.value).toFixed(2));
 
   format.addEventListener("change", () => {
-    // 사용자가 .jpg 같은 확장자 적어도 자동으로 떼고 깔끔하게 유지
     outName.value = stripExt(outName.value);
   });
 
-  // ✅ iOS에서 가장 안정적인 로딩: FileReader -> dataURL -> img.onload
+  // iOS 안정 로딩: FileReader -> dataURL -> img.onload
   async function loadFile(file){
     clearPills();
     outBlob = null;
@@ -233,7 +233,6 @@
     addPill(`파일: ${file.name || "(이름없음)"}`);
     addPill(`용량: ${fmtBytes(file.size)}`);
 
-    // 기본 파일명(확장자 제거)
     const base = stripExt((file.name || "photo"));
     outName.value = `${base}_resized`;
 
@@ -250,15 +249,12 @@
     await new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = () => reject(new Error("이미지 디코딩 실패"));
-      img.src = dataUrl;          // ✅ 원본 미리보기도 이걸로 확실히 뜸
+      img.src = dataUrl;
     });
 
-    // 원본 미리보기 표시
     origImg.src = img.src;
-
     addPill(`해상도: ${img.naturalWidth}×${img.naturalHeight}`);
 
-    // ✅ 여기까지 오면 버튼 활성화 확정
     setReady(true);
   }
 
@@ -276,14 +272,13 @@
     }
   });
 
-  // canvas.toBlob 폴백 (일부 환경 대비)
+  // canvas.toBlob 폴백
   function canvasToBlob(canvas, mime, quality){
     return new Promise((resolve) => {
       if (canvas.toBlob) {
         if (mime === "image/png") canvas.toBlob(resolve, mime);
         else canvas.toBlob(resolve, mime, quality);
       } else {
-        // 폴백: toDataURL -> Blob
         const dataURL = (mime === "image/png")
           ? canvas.toDataURL(mime)
           : canvas.toDataURL(mime, quality);
@@ -344,18 +339,21 @@
     dlBtn.disabled = false;
   });
 
+  // ✅ iOS Safari: 파일 다운로드 대신 "새 탭으로 이미지 열기" 방식
   dlBtn.addEventListener("click", () => {
     if (!outBlob) return;
 
-    const a = document.createElement("a");
     const url = URL.createObjectURL(outBlob);
-    a.href = url;
-    a.download = downloadName();
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
 
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    // 새 탭으로 열기 (팝업 차단 대비)
+    const win = window.open(url, "_blank");
+    if (!win) {
+      alert("이미지가 열리면 길게 눌러 '사진에 추가/저장' 하세요.");
+      window.location.href = url;
+    }
+
+    // 메모리 정리
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   });
 
   resetBtn.addEventListener("click", () => {
@@ -379,11 +377,9 @@
     setReady(false);
   });
 
-  // 초기 캔버스
   canvas.width = 300;
   canvas.height = 150;
   setReady(false);
 </script>
 </body>
 </html>
-
