@@ -3,18 +3,50 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>아이폰 사진 줄이기</title>
+  <title>사진 줄이기 (카톡/사파리 대응)</title>
   <style>
     :root{
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       --bg1:#ffb65a; --bg2:#ffe0b2;
       --card:#fff7ed; --ink:#4a2c1a; --muted: rgba(74,44,26,.78);
       --accent:#ff6a00; --accent2:#ff8a2a; --stroke: rgba(74,44,26,.16);
+      --ok:#1b7a3a;
     }
     body{ margin:0; min-height:100vh; background:linear-gradient(135deg,var(--bg1),var(--bg2)); color:var(--ink); }
     .wrap{ max-width:980px; margin:0 auto; padding:16px 14px 36px; padding-bottom:calc(36px + env(safe-area-inset-bottom)); }
     h1{ margin:8px 0 6px; font-size:20px; }
     .sub{ margin:0 0 14px; color:var(--muted); line-height:1.45; font-size:13px; }
+
+    .banner{
+      display:none;
+      background: rgba(255,255,255,.65);
+      border: 1px solid rgba(255,255,255,.55);
+      border-left: 6px solid var(--accent);
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin: 10px 0 14px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.08);
+      font-size: 12px;
+      line-height: 1.4;
+      color: rgba(74,44,26,.95);
+    }
+    .banner b{ color: var(--accent); }
+    .banner .row{
+      display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;
+      align-items:center;
+    }
+    .chip{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,106,0,.18);
+      background:#fff1dc;
+      color: rgba(74,44,26,.92);
+      cursor: pointer;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+
     .card{ background:var(--card); border-radius:18px; box-shadow:0 18px 40px rgba(0,0,0,.16); border:1px solid rgba(255,255,255,.35); overflow:hidden; }
     .section{ padding:14px; }
     .divider{ height:1px; background:rgba(74,44,26,.08); }
@@ -28,7 +60,7 @@
     .dz-title{ font-weight:900; color:var(--accent); font-size:15px; }
     .dz-hint{ margin-top:6px; color:var(--muted); font-size:12px; }
 
-    /* iOS: input을 display:none 하지 않기 (완전 숨김 X, 화면 밖) */
+    /* iOS/인앱: input display:none 금지(권장) */
     .file-input{
       position:absolute; left:-9999px; width:1px; height:1px; opacity:0;
     }
@@ -61,6 +93,7 @@
     }
     .btn.primary{ background:var(--accent); color:#fff; }
     .btn.secondary{ background:#ffe3c4; color:#6a3b1a; }
+    .btn.ok{ background: var(--ok); color:#fff; }
     .btn:disabled{ opacity:.5; cursor:not-allowed; }
 
     .pillrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
@@ -74,19 +107,40 @@
     .box .inner{ padding:10px; }
     img, canvas{ width:100%; height:auto; border-radius:12px; display:block; background:#f7f0e8; }
 
+    .saveGuide{
+      margin-top:10px;
+      padding:10px 12px;
+      background:#fff1dc;
+      border:1px solid rgba(255,106,0,.15);
+      border-radius:14px;
+      font-size:12px;
+      color:rgba(74,44,26,.9);
+      line-height:1.4;
+    }
+    .saveGuide b{ color: var(--accent); }
+
     .note{ font-size:12px; color:var(--muted); line-height:1.45; margin:10px 0 0; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>📱 아이폰 사진 줄이기</h1>
-    <p class="sub">사진 선택 → 줄이기 → (아이폰) 결과 이미지 열기 → 길게 눌러 저장</p>
+    <h1>📱 사진 줄이기 (카톡/사파리 대응)</h1>
+    <p class="sub">사진 선택 → 줄이기 → (카톡/아이폰) 결과 이미지를 길게 눌러 저장 또는 공유</p>
+
+    <div id="banner" class="banner">
+      <div>지금 <b>카카오톡 인앱 브라우저</b>로 열린 것 같아요. 여기서는 “파일 다운로드”가 제한될 수 있어요.</div>
+      <div>✅ 해결: <b>줄이기 후 결과 이미지를 길게 눌러 저장</b>하면 됩니다. 더 안정적으로 쓰려면 상단 메뉴에서 <b>Safari로 열기</b>를 추천해요.</div>
+      <div class="row">
+        <span id="copyLink" class="chip">🔗 링크 복사</span>
+        <span id="hintBtn" class="chip">📌 저장 방법 보기</span>
+      </div>
+    </div>
 
     <div class="card">
       <div class="section">
         <div class="dropzone">
           <div class="dz-title">사진을 선택하세요</div>
-          <div class="dz-hint">아이폰은 버튼으로 선택이 가장 안정적이에요</div>
+          <div class="dz-hint">아이폰/카톡은 버튼으로 선택하는 게 가장 안정적이에요</div>
 
           <label for="file" class="pick">📷 이미지 선택하기</label>
           <input id="file" class="file-input" type="file" accept="image/*" />
@@ -130,12 +184,13 @@
 
         <div class="btnrow">
           <button id="run" class="btn primary" type="button" disabled>줄이기</button>
-          <button id="download" class="btn secondary" type="button" disabled>결과 이미지 열기 (길게 눌러 저장)</button>
+          <button id="share" class="btn ok" type="button" disabled>공유/저장</button>
+          <button id="openImg" class="btn secondary" type="button" disabled>결과 이미지 크게 열기</button>
           <button id="reset" class="btn secondary" type="button">초기화</button>
         </div>
 
         <p class="note">
-          아이폰은 “파일 다운로드”가 막혀서, 버튼 누르면 이미지가 새 탭으로 열립니다 → 이미지를 길게 눌러 “사진에 추가/저장”.
+          ✅ 카톡 인앱에서는 “다운로드”가 막힐 수 있어요. <b>공유/저장</b> 또는 <b>결과 이미지 길게 눌러 저장</b>이 가장 확실해요.
         </p>
       </div>
 
@@ -147,17 +202,35 @@
             <header>원본</header>
             <div class="inner"><img id="origImg" alt="원본 미리보기" /></div>
           </div>
+
           <div class="box">
             <header>결과</header>
-            <div class="inner"><canvas id="canvas"></canvas></div>
+            <div class="inner">
+              <canvas id="canvas"></canvas>
+
+              <!-- ✅ 카톡/아이폰 저장 최강: 결과를 img로 바로 표시 -->
+              <img id="resultImg" alt="결과 이미지(길게 눌러 저장)" style="display:none; margin-top:10px;" />
+
+              <div id="saveGuide" class="saveGuide" style="display:none;">
+                ✅ 저장 방법<br/>
+                1) 아래 <b>결과 이미지</b>를 <b>길게 누르기</b><br/>
+                2) <b>‘사진에 저장/사진에 추가’</b> 선택<br/>
+                (또는 위의 <b>공유/저장</b> 버튼 사용)
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+    </div><!-- /card -->
+  </div><!-- /wrap -->
 
 <script>
   const $ = (id) => document.getElementById(id);
+
+  // Elements
+  const banner = $("banner");
+  const copyLinkBtn = $("copyLink");
+  const hintBtn = $("hintBtn");
 
   const fileInput = $("file");
   const origImg = $("origImg");
@@ -172,17 +245,29 @@
   const outName = $("outName");
 
   const runBtn = $("run");
-  const dlBtn = $("download");
+  const shareBtn = $("share");
+  const openImgBtn = $("openImg");
   const resetBtn = $("reset");
   const stats = $("stats");
 
+  const resultImg = $("resultImg");
+  const saveGuide = $("saveGuide");
+
+  // State
   let originalFile = null;
   let loadedImage = null; // HTMLImageElement
   let outBlob = null;
+  let outUrl = null;
 
+  // Detect Kakao in-app
+  function isKakaoInApp() {
+    const ua = navigator.userAgent || "";
+    return /KAKAOTALK/i.test(ua);
+  }
+
+  // Basic helpers
   const extForMime = (mime) => mime === "image/webp" ? "webp" : (mime === "image/png" ? "png" : "jpg");
   const stripExt = (s) => (s || "").trim().replace(/\.(jpg|jpeg|png|webp)$/i, "");
-
   const downloadName = () => {
     const base = stripExt(outName.value) || "resized";
     return `${base}.${extForMime(format.value)}`;
@@ -201,12 +286,14 @@
     s.textContent = text;
     stats.appendChild(s);
   };
-
   const clearPills = () => stats.innerHTML = "";
 
   const setReady = (ready) => {
     runBtn.disabled = !ready;
-    if (!ready) dlBtn.disabled = true;
+    if (!ready) {
+      shareBtn.disabled = true;
+      openImgBtn.disabled = true;
+    }
   };
 
   function safeInt(v, fallback=1600){
@@ -214,18 +301,61 @@
     return Number.isFinite(n) && n > 0 ? n : fallback;
   }
 
+  function cleanupOutUrl(){
+    if (outUrl) {
+      URL.revokeObjectURL(outUrl);
+      outUrl = null;
+    }
+  }
+
+  // UI init
   qVal.textContent = Number(quality.value).toFixed(2);
   quality.addEventListener("input", () => qVal.textContent = Number(quality.value).toFixed(2));
-
   format.addEventListener("change", () => {
     outName.value = stripExt(outName.value);
   });
 
-  // iOS 안정 로딩: FileReader -> dataURL -> img.onload
+  // Show Kakao banner
+  window.addEventListener("load", () => {
+    if (isKakaoInApp()) {
+      banner.style.display = "block";
+    }
+  });
+
+  copyLinkBtn.addEventListener("click", async () => {
+    const url = location.href;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        // fallback
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      alert("링크를 복사했어요! Safari 주소창에 붙여넣으면 더 안정적으로 열려요.");
+    } catch (e) {
+      alert("복사에 실패했어요. 주소창의 링크를 직접 복사해 주세요.");
+    }
+  });
+
+  hintBtn.addEventListener("click", () => {
+    alert("저장 방법\n1) '줄이기' 누르기\n2) 아래 결과 이미지가 나타나면 이미지를 길게 누르기\n3) '사진에 저장/사진에 추가'\n\n또는 '공유/저장' 버튼을 누르면 사진 앱/파일 앱으로 저장할 수 있어요.");
+  });
+
+  // iOS/카톡 안정 로딩: FileReader -> dataURL -> img.onload
   async function loadFile(file){
     clearPills();
+    cleanupOutUrl();
+
     outBlob = null;
-    dlBtn.disabled = true;
+    resultImg.style.display = "none";
+    saveGuide.style.display = "none";
+    shareBtn.disabled = true;
+    openImgBtn.disabled = true;
 
     originalFile = file;
     setReady(false);
@@ -283,7 +413,8 @@
           ? canvas.toDataURL(mime)
           : canvas.toDataURL(mime, quality);
 
-        const [meta, b64] = dataURL.split(",");
+        const parts = dataURL.split(",");
+        const b64 = parts[1] || "";
         const bytes = atob(b64);
         const arr = new Uint8Array(bytes.length);
         for (let i=0; i<bytes.length; i++) arr[i] = bytes.charCodeAt(i);
@@ -294,6 +425,7 @@
 
   runBtn.addEventListener("click", async () => {
     clearPills();
+    cleanupOutUrl();
 
     if (!loadedImage || !originalFile){
       addPill("에러: 사진이 로드되지 않았어요", true);
@@ -323,37 +455,77 @@
     const q = Number(quality.value);
 
     outBlob = await canvasToBlob(canvas, mime, q);
-
     if (!outBlob){
       addPill("에러: 변환 실패", true);
-      dlBtn.disabled = true;
+      shareBtn.disabled = true;
+      openImgBtn.disabled = true;
       return;
     }
 
-    const ratio = ((outBlob.size / originalFile.size) * 100).toFixed(1);
+    outUrl = URL.createObjectURL(outBlob);
 
+    // ✅ 카톡/아이폰 저장 최강 루트: 결과 이미지를 img로 보여주기
+    resultImg.src = outUrl;
+    resultImg.style.display = "block";
+    saveGuide.style.display = "block";
+
+    const ratio = ((outBlob.size / originalFile.size) * 100).toFixed(1);
     addPill(`원본: ${fmtBytes(originalFile.size)} / ${ow}×${oh}`);
     addPill(`결과: ${fmtBytes(outBlob.size)} (${ratio}%) / ${nw}×${nh}`);
     addPill(`파일명: ${downloadName()}`);
 
-    dlBtn.disabled = false;
+    shareBtn.disabled = false;
+    openImgBtn.disabled = false;
+
+    // 결과로 스크롤
+    setTimeout(() => {
+      resultImg.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   });
 
-  // ✅ iOS Safari: 파일 다운로드 대신 "새 탭으로 이미지 열기" 방식
-  dlBtn.addEventListener("click", () => {
-    if (!outBlob) return;
-
-    const url = URL.createObjectURL(outBlob);
-
-    // 새 탭으로 열기 (팝업 차단 대비)
-    const win = window.open(url, "_blank");
-    if (!win) {
-      alert("이미지가 열리면 길게 눌러 '사진에 추가/저장' 하세요.");
-      window.location.href = url;
+  // ✅ 공유/저장: 지원되면 Web Share로 "파일" 공유 (사진앱/파일앱에 저장 가능)
+  shareBtn.addEventListener("click", async () => {
+    if (!outBlob) {
+      alert("먼저 '줄이기'를 눌러 결과 이미지를 만들어 주세요.");
+      return;
     }
 
-    // 메모리 정리
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    const filename = downloadName();
+
+    // Web Share Level 2 (files)
+    try {
+      if (navigator.share) {
+        const file = new File([outBlob], filename, { type: outBlob.type || format.value });
+        // canShare가 있으면 더 안전
+        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename, text: "줄인 이미지" });
+          return;
+        }
+      }
+    } catch (e) {
+      // 아래 폴백으로 진행
+      console.warn(e);
+    }
+
+    // 폴백: 결과 이미지로 이동해서 길게 눌러 저장 안내
+    alert("이 환경에서는 '공유로 파일 저장'이 제한될 수 있어요.\n아래 결과 이미지를 길게 눌러 '사진에 저장/추가' 해주세요.");
+    if (resultImg && resultImg.src) {
+      resultImg.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+
+  // ✅ 결과 이미지 크게 열기 (인앱에서 window.open이 막힐 수 있어 같은 탭 이동도 제공)
+  openImgBtn.addEventListener("click", () => {
+    if (!outBlob || !outUrl) {
+      alert("먼저 '줄이기'를 눌러 결과 이미지를 만들어 주세요.");
+      return;
+    }
+
+    // 인앱에서 새탭이 막히면 같은 탭으로 이동
+    const win = window.open(outUrl, "_blank");
+    if (!win) {
+      window.location.href = outUrl;
+    }
   });
 
   resetBtn.addEventListener("click", () => {
@@ -362,7 +534,13 @@
     loadedImage = null;
     outBlob = null;
 
+    cleanupOutUrl();
+
     origImg.removeAttribute("src");
+    resultImg.removeAttribute("src");
+    resultImg.style.display = "none";
+    saveGuide.style.display = "none";
+
     ctx.clearRect(0,0,canvas.width,canvas.height);
     canvas.width = 300; canvas.height = 150;
 
@@ -377,6 +555,7 @@
     setReady(false);
   });
 
+  // Init canvas
   canvas.width = 300;
   canvas.height = 150;
   setReady(false);
