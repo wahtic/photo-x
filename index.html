@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>아이폰 이미지 줄이기</title>
+  <style>
+    :root{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      --bg1:#ffb65a; --bg2:#ffe0b2;
+      --card:#fff7ed; --ink:#4a2c1a; --muted: rgba(74,44,26,.78);
+      --accent:#ff6a00; --accent2:#ff8a2a; --stroke: rgba(74,44,26,.16);
+    }
+    body{ margin:0; min-height:100vh; background:linear-gradient(135deg,var(--bg1),var(--bg2)); color:var(--ink); }
+    .wrap{ max-width:980px; margin:0 auto; padding:16px 14px 36px; padding-bottom:calc(36px + env(safe-area-inset-bottom)); }
+    h1{ margin:8px 0 6px; font-size:20px; }
+    .sub{ margin:0 0 14px; color:var(--muted); line-height:1.45; font-size:13px; }
+    .card{ background:var(--card); border-radius:18px; box-shadow:0 18px 40px rgba(0,0,0,.16); border:1px solid rgba(255,255,255,.35); overflow:hidden; }
+    .section{ padding:14px; }
+    .divider{ height:1px; background:rgba(74,44,26,.08); }
+
+    .dropzone{
+      border:2px dashed rgba(255,106,0,.55);
+      border-radius:16px; padding:16px;
+      background:#fffaf4; text-align:center;
+      user-select:none; -webkit-user-select:none; touch-action:manipulation;
+    }
+    .dz-title{ font-weight:900; color:var(--accent); font-size:15px; }
+    .dz-hint{ margin-top:6px; color:var(--muted); font-size:12px; }
+
+    /* iOS: input을 display:none 하지 않기 (완전 숨김 X, 화면 밖) */
+    .file-input{
+      position:absolute; left:-9999px; width:1px; height:1px; opacity:0;
+    }
+    .pick{
+      margin-top:12px;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      width:100%; max-width:520px;
+      padding:12px 14px; border-radius:14px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      color:white; font-weight:900;
+      cursor:pointer; -webkit-tap-highlight-color:transparent;
+    }
+    .mini{ margin-top:10px; font-size:12px; color:var(--muted); }
+
+    .grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (max-width:420px){ .grid{ grid-template-columns:1fr; } }
+
+    label.meta{ display:block; font-size:12px; margin:10px 0 6px; color:var(--muted); }
+    input[type="number"], input[type="text"], select{
+      width:100%; padding:12px 12px; border-radius:14px;
+      border:1px solid var(--stroke); background:#fff; font-size:15px; outline:none;
+    }
+    input[type="range"]{ width:100%; accent-color:var(--accent); }
+    .inline{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+
+    .btnrow{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .btn{
+      flex:1; min-width:140px; padding:12px 14px; border-radius:14px; border:0;
+      font-weight:900; cursor:pointer;
+    }
+    .btn.primary{ background:var(--accent); color:#fff; }
+    .btn.secondary{ background:#ffe3c4; color:#6a3b1a; }
+    .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .pillrow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .pill{ background:#fff1dc; border:1px solid rgba(255,106,0,.15); padding:6px 10px; border-radius:999px; font-size:12px; }
+    .error{ background:#ffe3e3; border:1px solid rgba(180,0,0,.2); color:#7a1b1b; }
+
+    .preview{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    @media (max-width:780px){ .preview{ grid-template-columns:1fr; } }
+    .box{ border-radius:16px; background:#fff; border:1px solid rgba(74,44,26,.10); overflow:hidden; }
+    .box header{ padding:9px 12px; background:#fff1dc; font-weight:900; font-size:13px; }
+    .box .inner{ padding:10px; }
+    img, canvas{ width:100%; height:auto; border-radius:12px; display:block; background:#f7f0e8; }
+
+    .note{ font-size:12px; color:var(--muted); line-height:1.45; margin:10px 0 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📱 아이폰 이미지 줄이기</h1>
+    <p class="sub">사진 선택 → 줄이기 → 다운로드. (기기 안에서만 처리, 업로드 없음)</p>
+
+    <div class="card">
+      <div class="section">
+        <div class="dropzone">
+          <div class="dz-title">사진을 선택하세요</div>
+          <div class="dz-hint">아이폰은 버튼으로 선택이 가장 안정적이에요</div>
+
+          <label for="file" class="pick">📷 이미지 선택하기</label>
+          <input id="file" class="file-input" type="file" accept="image/*" />
+
+          <div class="mini">JPG/PNG/WEBP 가능</div>
+        </div>
+
+        <div class="pillrow" id="stats"></div>
+
+        <div class="grid">
+          <div>
+            <label class="meta">최대 가로(px)</label>
+            <input id="maxW" type="number" min="1" value="1600" />
+          </div>
+          <div>
+            <label class="meta">최대 세로(px)</label>
+            <input id="maxH" type="number" min="1" value="1600" />
+          </div>
+        </div>
+
+        <label class="meta inline">
+          <span>품질(quality)</span>
+          <b><span id="qVal">0.82</span></b>
+        </label>
+        <input id="quality" type="range" min="0.1" max="1" step="0.01" value="0.82" />
+
+        <div class="grid">
+          <div>
+            <label class="meta">출력 포맷</label>
+            <select id="format">
+              <option value="image/jpeg" selected>JPG</option>
+              <option value="image/webp">WEBP</option>
+              <option value="image/png">PNG</option>
+            </select>
+          </div>
+          <div>
+            <label class="meta">다운로드 파일명 (확장자 자동)</label>
+            <input id="outName" type="text" placeholder="예) photo_resized" />
+          </div>
+        </div>
+
+        <div class="btnrow">
+          <button id="run" class="btn primary" type="button" disabled>줄이기</button>
+          <button id="download" class="btn secondary" type="button" disabled>다운로드</button>
+          <button id="reset" class="btn secondary" type="button">초기화</button>
+        </div>
+
+        <p class="note">팁) 1200~2000px + 품질 0.75~0.85 추천</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section">
+        <div class="preview">
+          <div class="box">
+            <header>원본</header>
+            <div class="inner"><img id="origImg" alt="원본 미리보기" /></div>
+          </div>
+          <div class="box">
+            <header>결과</header>
+            <div class="inner"><canvas id="canvas"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const fileInput = $("file");
+  const origImg = $("origImg");
+  const canvas = $("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const maxW = $("maxW");
+  const maxH = $("maxH");
+  const quality = $("quality");
+  const qVal = $("qVal");
+  const format = $("format");
+  const outName = $("outName");
+
+  const runBtn = $("run");
+  const dlBtn = $("download");
+  const resetBtn = $("reset");
+  const stats = $("stats");
+
+  let originalFile = null;
+  let loadedImage = null; // HTMLImageElement
+  let outBlob = null;
+
+  const extForMime = (mime) => mime === "image/webp" ? "webp" : (mime === "image/png" ? "png" : "jpg");
+
+  const stripExt = (s) => (s || "").trim().replace(/\.(jpg|jpeg|png|webp)$/i, "");
+
+  const downloadName = () => {
+    const base = stripExt(outName.value) || "resized";
+    return `${base}.${extForMime(format.value)}`;
+  };
+
+  const fmtBytes = (b) => {
+    const units = ["B","KB","MB","GB"];
+    let i = 0, n = b;
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    return `${n.toFixed(i===0?0:2)} ${units[i]}`;
+  };
+
+  const addPill = (text, isError=false) => {
+    const s = document.createElement("span");
+    s.className = "pill" + (isError ? " error" : "");
+    s.textContent = text;
+    stats.appendChild(s);
+  };
+
+  const clearPills = () => stats.innerHTML = "";
+
+  const setReady = (ready) => {
+    runBtn.disabled = !ready;
+    if (!ready) dlBtn.disabled = true;
+  };
+
+  function safeInt(v, fallback=1600){
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) && n > 0 ? n : fallback;
+  }
+
+  qVal.textContent = Number(quality.value).toFixed(2);
+  quality.addEventListener("input", () => qVal.textContent = Number(quality.value).toFixed(2));
+
+  format.addEventListener("change", () => {
+    // 사용자가 .jpg 같은 확장자 적어도 자동으로 떼고 깔끔하게 유지
+    outName.value = stripExt(outName.value);
+  });
+
+  // ✅ iOS에서 가장 안정적인 로딩: FileReader -> dataURL -> img.onload
+  async function loadFile(file){
+    clearPills();
+    outBlob = null;
+    dlBtn.disabled = true;
+
+    originalFile = file;
+    setReady(false);
+
+    addPill(`파일: ${file.name || "(이름없음)"}`);
+    addPill(`용량: ${fmtBytes(file.size)}`);
+
+    // 기본 파일명(확장자 제거)
+    const base = stripExt((file.name || "photo"));
+    outName.value = `${base}_resized`;
+
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("FileReader 실패"));
+      reader.readAsDataURL(file);
+    });
+
+    const img = new Image();
+    loadedImage = img;
+
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error("이미지 디코딩 실패"));
+      img.src = dataUrl;          // ✅ 원본 미리보기도 이걸로 확실히 뜸
+    });
+
+    // 원본 미리보기 표시
+    origImg.src = img.src;
+
+    addPill(`해상도: ${img.naturalWidth}×${img.naturalHeight}`);
+
+    // ✅ 여기까지 오면 버튼 활성화 확정
+    setReady(true);
+  }
+
+  fileInput.addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    try{
+      await loadFile(f);
+    }catch(err){
+      clearPills();
+      addPill(`에러: ${err.message}`, true);
+      setReady(false);
+      console.error(err);
+      alert("사진을 불러오지 못했어요. (HEIC이면 스크린샷/다른 사진으로 시도해 주세요)");
+    }
+  });
+
+  // canvas.toBlob 폴백 (일부 환경 대비)
+  function canvasToBlob(canvas, mime, quality){
+    return new Promise((resolve) => {
+      if (canvas.toBlob) {
+        if (mime === "image/png") canvas.toBlob(resolve, mime);
+        else canvas.toBlob(resolve, mime, quality);
+      } else {
+        // 폴백: toDataURL -> Blob
+        const dataURL = (mime === "image/png")
+          ? canvas.toDataURL(mime)
+          : canvas.toDataURL(mime, quality);
+
+        const [meta, b64] = dataURL.split(",");
+        const bytes = atob(b64);
+        const arr = new Uint8Array(bytes.length);
+        for (let i=0; i<bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+        resolve(new Blob([arr], { type: mime }));
+      }
+    });
+  }
+
+  runBtn.addEventListener("click", async () => {
+    clearPills();
+
+    if (!loadedImage || !originalFile){
+      addPill("에러: 사진이 로드되지 않았어요", true);
+      setReady(false);
+      return;
+    }
+
+    const ow = loadedImage.naturalWidth;
+    const oh = loadedImage.naturalHeight;
+
+    const mw = safeInt(maxW.value, 1600);
+    const mh = safeInt(maxH.value, 1600);
+
+    const scale = Math.min(mw / ow, mh / oh, 1);
+    const nw = Math.max(1, Math.round(ow * scale));
+    const nh = Math.max(1, Math.round(oh * scale));
+
+    canvas.width = nw;
+    canvas.height = nh;
+
+    ctx.clearRect(0,0,nw,nh);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(loadedImage, 0, 0, nw, nh);
+
+    const mime = format.value;
+    const q = Number(quality.value);
+
+    outBlob = await canvasToBlob(canvas, mime, q);
+
+    if (!outBlob){
+      addPill("에러: 변환 실패", true);
+      dlBtn.disabled = true;
+      return;
+    }
+
+    const ratio = ((outBlob.size / originalFile.size) * 100).toFixed(1);
+
+    addPill(`원본: ${fmtBytes(originalFile.size)} / ${ow}×${oh}`);
+    addPill(`결과: ${fmtBytes(outBlob.size)} (${ratio}%) / ${nw}×${nh}`);
+    addPill(`파일명: ${downloadName()}`);
+
+    dlBtn.disabled = false;
+  });
+
+  dlBtn.addEventListener("click", () => {
+    if (!outBlob) return;
+
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(outBlob);
+    a.href = url;
+    a.download = downloadName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  });
+
+  resetBtn.addEventListener("click", () => {
+    fileInput.value = "";
+    originalFile = null;
+    loadedImage = null;
+    outBlob = null;
+
+    origImg.removeAttribute("src");
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    canvas.width = 300; canvas.height = 150;
+
+    maxW.value = 1600;
+    maxH.value = 1600;
+    quality.value = 0.82;
+    qVal.textContent = "0.82";
+    format.value = "image/jpeg";
+    outName.value = "";
+
+    clearPills();
+    setReady(false);
+  });
+
+  // 초기 캔버스
+  canvas.width = 300;
+  canvas.height = 150;
+  setReady(false);
+</script>
+</body>
+</html>
+
